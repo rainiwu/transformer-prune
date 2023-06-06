@@ -1,5 +1,10 @@
-from typing import Dict, Tuple, Any
+"""
+submodule for managing models to prepare for pruning and quantization
+"""
 
+from typing import Dict, Tuple, Callable
+
+import torch
 from transformers import (
     AutoTokenizer,
     AutoModelForQuestionAnswering,
@@ -9,7 +14,7 @@ from transformers import (
 from prune.types import MetricType, ModelType
 
 
-PRETRAINED: Dict[MetricType, Dict[ModelType, Tuple[Any, Any]]] = {
+PRETRAINED: Dict[MetricType, Dict[ModelType, Tuple[Callable, torch.nn.Module]]] = {
     "squad": {
         "gpt2": (
             AutoTokenizer.from_pretrained("gpt2"),
