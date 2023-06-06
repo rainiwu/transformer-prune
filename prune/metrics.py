@@ -12,6 +12,7 @@ you may obtain a copy of the license here http://www.apache.org/licenses/LICENSE
 from typing import Callable
 import collections
 import functools
+import copy
 
 import numpy as np
 import datasets
@@ -19,10 +20,10 @@ import evaluate
 from tqdm.auto import tqdm
 import torch
 from torch.utils.data import DataLoader
-from transformers import default_data_collator
+from transformers import default_data_collator, get_scheduler
 
 SQUAD_DATA = datasets.load_dataset("squad")
-METRIC = evaluate.load("squad")
+SQUAD_METRIC = evaluate.load("squad")
 
 
 def preprocess_training_examples(examples, tokenizer: Callable):
@@ -182,21 +183,32 @@ def compute_metrics(start_logits, end_logits, features, examples):
     theoretical_answers = [
         {"id": ex["id"], "answers": ex["answers"]} for ex in examples
     ]
-    return METRIC.compute(predictions=predicted_answers, references=theoretical_answers)
+    return SQUAD_METRIC.compute(
+        predictions=predicted_answers, references=theoretical_answers
+    )
 
 
-def finetune_squad() -> torch.nn.Module:
+def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Module:
     """
     finetune a given model on the squad dataset
     """
+    model = copy.deepcopy(model)
+
+    training_preprocessing: Callable = functools.partial(
+        preprocess_training_examples, tokenizer=tokenizer
+    )
+    validation_preprocess: Callable = functools.partial(
+        preprocess_validation_examples, tokenizer=tokenizer
+    )
+
     train_dataset = SQUAD_DATA["train"].map(  # type: ignore
-        preprocess_training_examples,
+        training_preprocessing,
         batched=True,
         remove_columns=SQUAD_DATA["train"].column_names,  # type: ignore
     )
 
     validation_dataset = SQUAD_DATA["validation"].map(  # type: ignore
-        preprocess_validation_examples,
+        validation_preprocess,
         batched=True,
         remove_columns=SQUAD_DATA["validation"].column_names,  # type: ignore
     )
@@ -214,3 +226,55 @@ def finetune_squad() -> torch.nn.Module:
     eval_dataloader = DataLoader(
         validation_set, collate_fn=default_data_collator, batch_size=8  # type: ignore
     )
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
+
+    num_train_epochs = 3
+    num_update_steps_per_epoch = len(train_dataloader)
+    num_training_steps = num_train_epochs * num_update_steps_per_epoch
+
+    lr_scheduler = get_scheduler(
+        "linear",
+        optimizer=optimizer,
+        num_warmup_steps=0,
+        num_training_steps=num_training_steps,
+    )
+
+    progress_bar = tqdm(range(num_training_steps))
+
+    for epoch in range(num_train_epochs):
+        # Training
+        model.train()
+        for _, batch in enumerate(train_dataloader):
+            outputs = model(**batch)
+
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
+            progress_bar.update(1)
+
+        # Evaluation
+        model.eval()
+        start_logits = []
+        end_logits = []
+        for batch in tqdm(eval_dataloader):
+            with torch.no_grad():
+                outputs = model(**batch)
+
+            start_logits.append(outputs.start_logits)
+            end_logits.append(outputs.end_logits)
+
+        start_logits = np.concatenate(start_logits)
+        end_logits = np.concatenate(end_logits)
+        start_logits = start_logits[: len(validation_dataset)]
+        end_logits = end_logits[: len(validation_dataset)]
+
+        metrics = compute_metrics(
+            start_logits,
+            end_logits,
+            validation_dataset,
+            SQUAD_DATA["validation"],  # type: ignore
+        )
+        print(f"epoch {epoch}:", metrics)
+
+    return model
