@@ -64,3 +64,7 @@ PRETRAINED: Dict[MetricType, Dict[ModelType, Tuple[Callable, torch.nn.Module]]] 
         ),
     },
 }
+
+# add pad token for QA tasks
+for tokenizer, _ in PRETRAINED["squad"].values():
+    tokenizer.pad_token = tokenizer.eos_token
