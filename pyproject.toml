@@ -6,7 +6,7 @@ authors = ["Raini Wu <rainiwu@ucsd.edu>, Jacob Ayers <jgayers@ucsd.edu>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
 transformers = "^4.29.2"
 datasets = "^2.12.0"
 torch = "^2.0.1"
