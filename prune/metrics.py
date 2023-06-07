@@ -61,10 +61,10 @@ def preprocess_training_examples(examples, tokenizer: Callable):
 
         # Find the start and end of the context
         idx = 0
-        while sequence_ids[idx] != 1:
+        while len(sequence_ids) > idx and sequence_ids[idx] != 1:
             idx += 1
         context_start = idx
-        while sequence_ids[idx] == 1:
+        while len(sequence_ids) > idx and sequence_ids[idx] == 1:
             idx += 1
         context_end = idx - 1
 
@@ -201,13 +201,16 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         preprocess_validation_examples, tokenizer=tokenizer
     )
 
-    train_dataset = SQUAD_DATA["train"].map(  # type: ignore
+    reduced_training = datasets.load_dataset("squad", split="train[:1%]")
+    reduced_validate = datasets.load_dataset("squad", split="validation[:1%]")
+
+    train_dataset = reduced_training.map(  # type: ignore
         training_preprocessing,
         batched=True,
         remove_columns=SQUAD_DATA["train"].column_names,  # type: ignore
     )
 
-    validation_dataset = SQUAD_DATA["validation"].map(  # type: ignore
+    validation_dataset = reduced_validate.map(  # type: ignore
         validation_preprocess,
         batched=True,
         remove_columns=SQUAD_DATA["validation"].column_names,  # type: ignore
@@ -246,11 +249,14 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         # Training
         model.train()
         for _, batch in enumerate(train_dataloader):
+            optimizer.zero_grad()
+
             outputs = model(**batch)
+            loss = outputs.loss
+            loss.backwards()
 
             optimizer.step()
             lr_scheduler.step()
-            optimizer.zero_grad()
             progress_bar.update(1)
 
         # Evaluation
