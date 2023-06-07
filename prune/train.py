@@ -1,5 +1,5 @@
 """
-submodule defining operations on metric datasets
+submodule defining training operations
 
 significant portions of this submodule are adapated from
 https://huggingface.co/learn/nlp-course/
@@ -239,7 +239,10 @@ def generate_squad_dataloaders(
 
 
 def finetune_squad(
-    tokenizer: Callable, model: torch.nn.Module, num_epochs: int = 1, dataset_percent: int = 100
+    tokenizer: Callable,
+    model: torch.nn.Module,
+    num_epochs: int = 1,
+    dataset_percent: int = 100,
 ) -> torch.nn.Module:
     """
     finetune a given model on the squad dataset
