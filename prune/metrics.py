@@ -194,7 +194,6 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
     """
     model = copy.deepcopy(model)
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    # device = torch.device("cpu")
     model.to(device)
 
     training_preprocessing: Callable = functools.partial(
@@ -219,9 +218,9 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         remove_columns=SQUAD_DATA["validation"].column_names,  # type: ignore
     )
 
-    train_dataset.set_format("torch")
+    train_dataset.set_format("torch")  # type: ignore
     validation_set = validation_dataset.remove_columns(["example_id", "offset_mapping"])
-    validation_set.set_format("torch")
+    validation_set.set_format("torch")  # type: ignore
 
     train_dataloader = DataLoader(
         train_dataset,  # type: ignore
@@ -253,7 +252,6 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         # Training
         model.train()
         for _, batch in enumerate(train_dataloader):
-
             gpu_batch = {}
             for key, value in batch.items():
                 gpu_batch[key] = value.to(device)
@@ -273,7 +271,6 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         start_logits = []
         end_logits = []
         for batch in tqdm(eval_dataloader):
-
             gpu_batch = {}
             for key, value in batch.items():
                 gpu_batch[key] = value.to(device)
@@ -286,8 +283,8 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
 
         start_logits = np.concatenate(start_logits)
         end_logits = np.concatenate(end_logits)
-        start_logits = start_logits[: len(validation_dataset)]
-        end_logits = end_logits[: len(validation_dataset)]
+        start_logits = start_logits[: len(validation_dataset)]  # type: ignore
+        end_logits = end_logits[: len(validation_dataset)]  # type: ignore
 
         metrics = compute_metrics(
             start_logits,
