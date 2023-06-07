@@ -193,6 +193,9 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
     finetune a given model on the squad dataset
     """
     model = copy.deepcopy(model)
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    # device = torch.device("cpu")
+    model.to(device)
 
     training_preprocessing: Callable = functools.partial(
         preprocess_training_examples, tokenizer=tokenizer
@@ -201,8 +204,8 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         preprocess_validation_examples, tokenizer=tokenizer
     )
 
-    reduced_training = datasets.load_dataset("squad", split="train[:1%]")
-    reduced_validate = datasets.load_dataset("squad", split="validation[:1%]")
+    reduced_training = datasets.load_dataset("squad", split="train[:5%]")
+    reduced_validate = datasets.load_dataset("squad", split="validation[:5%]")
 
     train_dataset = reduced_training.map(  # type: ignore
         training_preprocessing,
@@ -225,9 +228,10 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         shuffle=True,
         collate_fn=default_data_collator,
         batch_size=8,
+        pin_memory=True,
     )
     eval_dataloader = DataLoader(
-        validation_set, collate_fn=default_data_collator, batch_size=8  # type: ignore
+        validation_set, collate_fn=default_data_collator, batch_size=8, pin_memory=True  # type: ignore
     )
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
@@ -249,9 +253,14 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         # Training
         model.train()
         for _, batch in enumerate(train_dataloader):
+
+            gpu_batch = {}
+            for key, value in batch.items():
+                gpu_batch[key] = value.to(device)
+
             optimizer.zero_grad()
 
-            outputs = model(**batch)
+            outputs = model(**gpu_batch)
             loss = outputs.loss
             loss.backward()
 
@@ -264,11 +273,16 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         start_logits = []
         end_logits = []
         for batch in tqdm(eval_dataloader):
-            with torch.no_grad():
-                outputs = model(**batch)
 
-            start_logits.append(outputs.start_logits)
-            end_logits.append(outputs.end_logits)
+            gpu_batch = {}
+            for key, value in batch.items():
+                gpu_batch[key] = value.to(device)
+
+            with torch.no_grad():
+                outputs = model(**gpu_batch)
+
+            start_logits.append(outputs.start_logits.to("cpu"))
+            end_logits.append(outputs.end_logits.to("cpu"))
 
         start_logits = np.concatenate(start_logits)
         end_logits = np.concatenate(end_logits)
