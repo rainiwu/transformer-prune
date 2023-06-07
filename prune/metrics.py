@@ -253,7 +253,7 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
 
             outputs = model(**batch)
             loss = outputs.loss
-            loss.backwards()
+            loss.backward()
 
             optimizer.step()
             lr_scheduler.step()
