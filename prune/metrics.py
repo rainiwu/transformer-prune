@@ -239,7 +239,7 @@ def generate_squad_dataloaders(
 
 
 def finetune_squad(
-    tokenizer: Callable, model: torch.nn.Module, dataset_percent: int = 100
+    tokenizer: Callable, model: torch.nn.Module, num_epochs: int = 1, dataset_percent: int = 100
 ) -> torch.nn.Module:
     """
     finetune a given model on the squad dataset
@@ -254,7 +254,7 @@ def finetune_squad(
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
 
-    num_train_epochs = 3
+    num_train_epochs = num_epochs
     num_update_steps_per_epoch = len(train_dataloader)
     num_training_steps = num_train_epochs * num_update_steps_per_epoch
 
