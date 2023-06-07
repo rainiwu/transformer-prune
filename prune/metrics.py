@@ -61,10 +61,10 @@ def preprocess_training_examples(examples, tokenizer: Callable):
 
         # Find the start and end of the context
         idx = 0
-        while len(sequence_ids) > idx and sequence_ids[idx] != 1:
+        while idx < len(sequence_ids) and sequence_ids[idx] != 1:
             idx += 1
         context_start = idx
-        while len(sequence_ids) > idx and sequence_ids[idx] == 1:
+        while idx < len(sequence_ids) and sequence_ids[idx] == 1:
             idx += 1
         context_end = idx - 1
 
