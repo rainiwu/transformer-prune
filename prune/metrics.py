@@ -9,7 +9,7 @@ the huggingface nlp course is licensed under the Apache v2.0 license
 you may obtain a copy of the license here http://www.apache.org/licenses/LICENSE-2.0
 """
 
-from typing import Callable
+from typing import Callable, Tuple, Any
 import collections
 import functools
 import copy
@@ -188,14 +188,12 @@ def compute_metrics(start_logits, end_logits, features, examples):
     )
 
 
-def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Module:
+def generate_squad_dataloaders(
+    tokenizer: Callable, dataset_percent: int = 50
+) -> Tuple[DataLoader, DataLoader, Any]:
     """
-    finetune a given model on the squad dataset
+    create the appropriate dataloaders for training and evaluation dataset
     """
-    model = copy.deepcopy(model)
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model.to(device)
-
     training_preprocessing: Callable = functools.partial(
         preprocess_training_examples, tokenizer=tokenizer
     )
@@ -203,8 +201,12 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         preprocess_validation_examples, tokenizer=tokenizer
     )
 
-    reduced_training = datasets.load_dataset("squad", split="train[:5%]")
-    reduced_validate = datasets.load_dataset("squad", split="validation[:5%]")
+    reduced_training = datasets.load_dataset(
+        "squad", split=f"train[:{dataset_percent}%]"
+    )
+    reduced_validate = datasets.load_dataset(
+        "squad", split=f"validation[:{dataset_percent}%]"
+    )
 
     train_dataset = reduced_training.map(  # type: ignore
         training_preprocessing,
@@ -231,6 +233,23 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
     )
     eval_dataloader = DataLoader(
         validation_set, collate_fn=default_data_collator, batch_size=8, pin_memory=True  # type: ignore
+    )
+
+    return train_dataloader, eval_dataloader, validation_dataset
+
+
+def finetune_squad(
+    tokenizer: Callable, model: torch.nn.Module, dataset_percent: int = 100
+) -> torch.nn.Module:
+    """
+    finetune a given model on the squad dataset
+    """
+    model = copy.deepcopy(model)
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    model.to(device)
+
+    train_dataloader, eval_dataloader, validation_dataset = generate_squad_dataloaders(
+        tokenizer, dataset_percent
     )
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
@@ -294,4 +313,4 @@ def finetune_squad(tokenizer: Callable, model: torch.nn.Module) -> torch.nn.Modu
         )
         print(f"epoch {epoch}:", metrics)
 
-    return model
+    return model.to("cpu")
