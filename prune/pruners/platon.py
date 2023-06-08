@@ -21,6 +21,7 @@ DEFAULT_CONFIG: Dict[str, Union[int, float]] = {
     "initial_warmup": 1,
     "final_warmup": 5,
     "warmup_steps": 5400,
+    "total_steps": 1111,
 }
 
 
@@ -172,11 +173,13 @@ class Pruner:
         return threshold, mask_threshold
 
 
-def generate_pruning_functions(model: torch.nn.Module) -> TrainerHook:
+def generate_pruning_functions(
+    model: torch.nn.Module, default: Dict[str, Union[int, float]] = DEFAULT_CONFIG
+) -> TrainerHook:
     platon = Pruner(
         model,
-        config=DEFAULT_CONFIG,
-        total_step=data_len // num_epochs,
+        config=default,
+        total_step=default["total_steps"],
         use_no_mask=False,
     )
 

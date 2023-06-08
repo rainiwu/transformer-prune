@@ -6,7 +6,7 @@ import torch
 
 import prune.models as pm
 import prune.train as pr
-from prune.pruners import neural, default
+from prune.pruners import neural, platon
 
 if __name__ == "__main__":
     for model in ["gpt2", "bert", "albert", "roberta", "electra"]:
@@ -17,20 +17,22 @@ if __name__ == "__main__":
         )
         torch.save(tuned.state_dict(), model + "_default_10percent_1epoch.pth")
 
-        # apply various levels of random, l1 pruning, and finetuned pruning
+        # apply various levels of finetuned pruning
         for value in np.linspace(0, 1, num=10):
-            random_pruned = copy.deepcopy(tuned)
-            default.random_prune(random_pruned, sparsity=value)
-            torch.save(
-                random_pruned.state_dict(),
-                model + "_random_pruned_" + f"{value}" + "_10percent_1epoch.pth",
+            platon_config = copy.deepcopy(platon.DEFAULT_CONFIG)
+            platon_config["final_threshold"] = value
+            platon_pruning_function = functools.partial(
+                platon.generate_pruning_functions, default=platon_config
             )
-
-            l1_pruned = copy.deepcopy(tuned)
-            default.lowest_prune(l1_pruned, sparsity=value)
+            platon_pruned = pr.finetune_squad(
+                *pm.PRETRAINED["squad"][model],  # type: ignore
+                num_epochs=1,
+                dataset_percent=10,
+                prune_generator=platon_pruning_function,
+            )
             torch.save(
-                l1_pruned.state_dict(),
-                model + "_l1_pruned_" + f"{value}" + "_10percent_1epoch.pth",
+                platon_pruned.state_dict(),
+                model + "_platon_" + f"{value}" + "_10percent_1epoch.pth",
             )
 
             nc_config = copy.deepcopy(neural.DEFAULT_CONFIG)
