@@ -9,7 +9,7 @@ the huggingface nlp course is licensed under the Apache v2.0 license
 you may obtain a copy of the license here http://www.apache.org/licenses/LICENSE-2.0
 """
 
-from typing import Callable, Tuple, Any, Optional
+from typing import Callable, Tuple, Any, Optional, Dict
 import collections
 import functools
 import copy
@@ -245,7 +245,7 @@ def evaluate_model(
     validation_dataset,
     eval_dataloader,
     epoch: Optional[int] = None,
-) -> None:
+) -> Dict:
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     # Evaluation
     model.eval()
@@ -277,6 +277,9 @@ def evaluate_model(
         print(f"epoch {epoch}:", metrics)
     else:
         print("eval:", metrics)
+
+    assert metrics is not None
+    return metrics
 
 
 def finetune_squad(
