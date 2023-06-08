@@ -18,7 +18,7 @@ if __name__ == "__main__":
         torch.save(tuned.state_dict(), model + "_default_10percent_1epoch.pth")
 
         # apply various levels of finetuned pruning
-        for value in np.linspace(0, 1, num=10):
+        for value in np.linspace(0.05, 1, num=10):
             platon_config = copy.deepcopy(platon.DEFAULT_CONFIG)
             platon_config["final_threshold"] = value
             platon_pruning_function = functools.partial(
