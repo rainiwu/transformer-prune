@@ -160,7 +160,7 @@ class Pruner:
                 p.data.masked_fill_(is_dict[n] < mask_threshold, 0.0)
         return mask_threshold
 
-    def update_and_pruning(self, model, global_step):
+    def update_and_pruning(self, global_step, model):
         # Update importance score after optimizer stepping
         self.update_ipt_with_local_window(model, global_step)
         # Get the ramaining ratio
@@ -183,5 +183,5 @@ def generate_pruning_functions(
         use_no_mask=False,
     )
 
-    postoptimize = functools.partial(platon.update_and_pruning, model=model)
-    return TrainerHook(postoptimize=postoptimize)
+    prestep = functools.partial(platon.update_and_pruning, model=model)
+    return TrainerHook(prestep=prestep)
