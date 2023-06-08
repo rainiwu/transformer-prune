@@ -9,7 +9,7 @@ the huggingface nlp course is licensed under the Apache v2.0 license
 you may obtain a copy of the license here http://www.apache.org/licenses/LICENSE-2.0
 """
 
-from typing import Callable, Tuple, Any
+from typing import Callable, Tuple, Any, Optional
 import collections
 import functools
 import copy
@@ -21,6 +21,8 @@ from tqdm.auto import tqdm
 import torch
 from torch.utils.data import DataLoader
 from transformers import default_data_collator, get_scheduler
+
+from prune.types import TrainerHook
 
 SQUAD_DATA = datasets.load_dataset("squad")
 SQUAD_METRIC = evaluate.load("squad")
@@ -243,6 +245,7 @@ def finetune_squad(
     model: torch.nn.Module,
     num_epochs: int = 1,
     dataset_percent: int = 100,
+    prune_generator: Optional[Callable[[torch.nn.Module], TrainerHook]] = None,
 ) -> torch.nn.Module:
     """
     finetune a given model on the squad dataset
@@ -250,6 +253,10 @@ def finetune_squad(
     model = copy.deepcopy(model)
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model.to(device)
+
+    hooks = TrainerHook()
+    if prune_generator is not None:
+        hooks = prune_generator(model)
 
     train_dataloader, eval_dataloader, validation_dataset = generate_squad_dataloaders(
         tokenizer, dataset_percent
@@ -271,9 +278,15 @@ def finetune_squad(
     progress_bar = tqdm(range(num_training_steps))
 
     for epoch in range(num_train_epochs):
+        if hooks.pretrain is not None:
+            hooks.pretrain()
+
         # Training
         model.train()
-        for _, batch in enumerate(train_dataloader):
+        for step, batch in enumerate(train_dataloader):
+            if hooks.prestep is not None:
+                hooks.prestep(step)
+
             gpu_batch = {}
             for key, value in batch.items():
                 gpu_batch[key] = value.to(device)
@@ -284,9 +297,19 @@ def finetune_squad(
             loss = outputs.loss
             loss.backward()
 
+            if hooks.preoptimize is not None:
+                hooks.preoptimize()
+
             optimizer.step()
+
+            if hooks.postoptimize is not None:
+                hooks.postoptimize()
+
             lr_scheduler.step()
             progress_bar.update(1)
+
+        if hooks.posttrain is not None:
+            hooks.posttrain()
 
         # Evaluation
         model.eval()
