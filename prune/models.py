@@ -66,5 +66,6 @@ PRETRAINED: Dict[MetricType, Dict[ModelType, Tuple[Callable, torch.nn.Module]]] 
 }
 
 # add pad token for QA tasks
-for name, (tokenizer, _) in PRETRAINED["squad"].items():
-    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+for name, (tokenizer, model) in PRETRAINED["squad"].items():
+    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+    model.resize_token_embeddings(len(tokenizer))  # type: ignore
