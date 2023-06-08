@@ -240,6 +240,45 @@ def generate_squad_dataloaders(
     return train_dataloader, eval_dataloader, validation_dataset
 
 
+def evaluate_model(
+    model: torch.nn.Module,
+    validation_dataset,
+    eval_dataloader,
+    epoch: Optional[int] = None,
+) -> None:
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    # Evaluation
+    model.eval()
+    start_logits = []
+    end_logits = []
+    for batch in tqdm(eval_dataloader):
+        gpu_batch = {}
+        for key, value in batch.items():
+            gpu_batch[key] = value.to(device)
+
+        with torch.no_grad():
+            outputs = model(**gpu_batch)
+
+        start_logits.append(outputs.start_logits.to("cpu"))
+        end_logits.append(outputs.end_logits.to("cpu"))
+
+    start_logits = np.concatenate(start_logits)
+    end_logits = np.concatenate(end_logits)
+    start_logits = start_logits[: len(validation_dataset)]  # type: ignore
+    end_logits = end_logits[: len(validation_dataset)]  # type: ignore
+
+    metrics = compute_metrics(
+        start_logits,
+        end_logits,
+        validation_dataset,
+        SQUAD_DATA["validation"],  # type: ignore
+    )
+    if epoch is not None:
+        print(f"epoch {epoch}:", metrics)
+    else:
+        print("eval:", metrics)
+
+
 def finetune_squad(
     tokenizer: Callable,
     model: torch.nn.Module,
@@ -311,32 +350,6 @@ def finetune_squad(
         if hooks.posttrain is not None:
             hooks.posttrain()
 
-        # Evaluation
-        model.eval()
-        start_logits = []
-        end_logits = []
-        for batch in tqdm(eval_dataloader):
-            gpu_batch = {}
-            for key, value in batch.items():
-                gpu_batch[key] = value.to(device)
-
-            with torch.no_grad():
-                outputs = model(**gpu_batch)
-
-            start_logits.append(outputs.start_logits.to("cpu"))
-            end_logits.append(outputs.end_logits.to("cpu"))
-
-        start_logits = np.concatenate(start_logits)
-        end_logits = np.concatenate(end_logits)
-        start_logits = start_logits[: len(validation_dataset)]  # type: ignore
-        end_logits = end_logits[: len(validation_dataset)]  # type: ignore
-
-        metrics = compute_metrics(
-            start_logits,
-            end_logits,
-            validation_dataset,
-            SQUAD_DATA["validation"],  # type: ignore
-        )
-        print(f"epoch {epoch}:", metrics)
+        evaluate_model(model, validation_dataset, eval_dataloader, epoch)
 
     return model.to("cpu")
