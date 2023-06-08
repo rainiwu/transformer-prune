@@ -20,8 +20,11 @@ DEFAULT_CONFIG: List[Dict[str, Union[int, float, str]]] = [
 ]
 
 
-def generate_pruning_functions(model: torch.nn.Module) -> TrainerHook:
-    config = WeightPruningConfig(DEFAULT_CONFIG)
+def generate_pruning_functions(
+    model: torch.nn.Module,
+    configs: List[Dict[str, Union[int, float, str]]] = DEFAULT_CONFIG,
+) -> TrainerHook:
+    config = WeightPruningConfig(configs)
     compression_manager = prepare_compression(model, config)
     return TrainerHook(
         pretrain=compression_manager.callbacks.on_train_begin,
