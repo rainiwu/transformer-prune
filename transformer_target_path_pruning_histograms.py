@@ -32,13 +32,13 @@ def weight_histogram(tensor, title, log=False):
     counts, bins = np.histogram(base_fc_layer, bins = 2048)
     zero_approximation = max(counts)
     element_count = len(base_fc_layer)
-    print(type(counts))
+    #print(type(counts))
     plt.hist(bins[:-1], bins, weights=counts, log=log)
     plt.title(title, fontsize=10)
     plt.xlabel("Weight Values")
     plt.xlim([-2.3, 2.3])
     if log:
-        plt.ylabel("Count (Log Scale)")
+        plt.ylabel("Count(Log)")
     else:
         plt.ylabel("Count")
     
@@ -70,27 +70,27 @@ ndx = 0
 count = 1
 for tensor in base_tensors:
     plt.subplot(4,3, count)
-    weight_histogram(tensor,"Base Model, Layer: "+str(relevant_tensors[ndx]), log=True)
+    weight_histogram(tensor,"Base Layer: "+str(relevant_tensors[ndx]), log=True)
     ndx += 1
     count += 1
 ndx = 0
 for tensor in query_pruned_tensors:
     plt.subplot(4,3, count)
-    weight_histogram(tensor,"Query Pruned Model, Layer: "+str(relevant_tensors[ndx]), log=True)
+    weight_histogram(tensor,"Query Pruned Layer: "+str(relevant_tensors[ndx]), log=True)
     ndx += 1
     count += 1
 ndx = 0
 for tensor in key_pruned_tensors:
     plt.subplot(4,3, count)
-    weight_histogram(tensor,"Key Pruned Model, Layer: "+str(relevant_tensors[ndx]), log=True)
+    weight_histogram(tensor,"Key Pruned Layer: "+str(relevant_tensors[ndx]), log=True)
     ndx += 1
     count += 1
 ndx = 0
 for tensor in value_pruned_tensors:
     plt.subplot(4,3, count)
-    weight_histogram(tensor,"Value Pruned Model, Layer: "+str(relevant_tensors[ndx]), log=True)
+    weight_histogram(tensor,"Value Pruned, Layer "+str(relevant_tensors[ndx]), log=True)
     ndx += 1
     count += 1
 plt.suptitle("50% L1 Unstructured Targeted Pruning Across Projection Layers")
 plt.tight_layout()
-plt.show()
+plt.savefig("Target_Path_Pruning_Histogram_Visualization.png")
