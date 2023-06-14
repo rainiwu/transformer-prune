@@ -11,6 +11,14 @@ _, model_pruned_queries = copy.deepcopy(pm.PRETRAINED["squad"]["gpt2"])
 _, model_pruned_keys = copy.deepcopy(pm.PRETRAINED["squad"]["gpt2"])
 _, model_pruned_values = copy.deepcopy(pm.PRETRAINED["squad"]["gpt2"])
 
+gpt2_squad_model_path = "gpt2_default_100percent_5epoch.pth"
+base.load_state_dict(torch.load(gpt2_squad_model_path))
+model_pruned_queries.load_state_dict(torch.load(gpt2_squad_model_path))
+model_pruned_keys.load_state_dict(torch.load(gpt2_squad_model_path))
+model_pruned_values.load_state_dict(torch.load(gpt2_squad_model_path))
+
+
+
 # building separate models that prune queries, keys, and values
 model_pruned_queries, query_prune_count = target_path_pruning(model_pruned_queries, "queries", 0.5)
 
