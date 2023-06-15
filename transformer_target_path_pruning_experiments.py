@@ -11,7 +11,7 @@ from transformer_target_path_pruning import target_path_pruning
 
 
 # Target path pruning experiment:
-gpt2_squad_model_path = "gpt2_default_100percent_5epoch.pth"
+gpt2_squad_model_path = "gpt2_default_100percent_1epoch.pth"
 
 token, base = copy.deepcopy(pm.PRETRAINED["squad"]["gpt2"])
 
@@ -35,6 +35,12 @@ model_pruned_values, value_prune_count = target_path_pruning(model_pruned_values
 print("Query Prune Count: ", query_prune_count)
 print("Key Prune Count: ", key_prune_count)
 print("Value Prune Count: ", value_prune_count)
+
+# get things to gpu
+base.to(torch.device("cuda"))
+model_pruned_queries.to(torch.device("cuda"))
+model_pruned_keys.to(torch.device("cuda"))
+model_pruned_values.to(torch.device("cuda"))
 
 # evaluating on squad test set
 baseline_results = eval.evaluate_squad_model(token, base)
