@@ -1,6 +1,8 @@
 from typing import Callable, Dict
 
 import torch
+from neural_compressor import quantization
+from neural_compressor.config import PostTrainingQuantConfig
 
 import prune.train as pr
 
@@ -12,7 +14,11 @@ def evaluate_squad_model(
         tokenizer, 100
     )
     if quantize is True:
-        pr.evaluate_model(model, validation_dataset, eval_dataloader, quantize=True)
+        model = quantization.fit(
+            model=model,
+            conf=PostTrainingQuantConfig(),
+            calib_dataloader=eval_dataloader,
+        )
     return pr.evaluate_model(model, validation_dataset, eval_dataloader)
 
 
