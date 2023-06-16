@@ -10,3 +10,16 @@ def evaluate_squad_model(tokenizer: Callable, model: torch.nn.Module) -> Dict:
         tokenizer, 100
     )
     return pr.evaluate_model(model, validation_dataset, eval_dataloader)
+
+
+def get_sparsity(model: torch.nn.Module) -> float:
+    total_params: int = 0
+    num_nonzero: int = 0
+    for _, param in model.named_parameters():
+        total_params += torch.numel(param)
+        num_nonzero += int(torch.count_nonzero(param))
+    return 1 - (num_nonzero) / total_params
+
+
+if __name__ == "__main__":
+    pass
