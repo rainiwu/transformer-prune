@@ -245,10 +245,16 @@ def evaluate_model(
     validation_dataset,
     eval_dataloader,
     epoch: Optional[int] = None,
+    quantize: bool = False,
 ) -> Dict:
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     # Evaluation
     model.eval()
+
+    if quantize is True:
+        model.qconfig = torch.ao.quantization.get_default_qconfig("x86")
+        model = torch.ao.quantization.prepare(model)
+
     start_logits = []
     end_logits = []
     for batch in tqdm(eval_dataloader):
@@ -277,6 +283,9 @@ def evaluate_model(
         print(f"epoch {epoch}:", metrics)
     else:
         print("eval:", metrics)
+
+    if quantize is True:
+        model = torch.ao.quantization.convert(model)
 
     assert metrics is not None
     return metrics

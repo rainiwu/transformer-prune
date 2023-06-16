@@ -5,10 +5,14 @@ import torch
 import prune.train as pr
 
 
-def evaluate_squad_model(tokenizer: Callable, model: torch.nn.Module) -> Dict:
+def evaluate_squad_model(
+    tokenizer: Callable, model: torch.nn.Module, quantize: bool = False
+) -> Dict:
     _, eval_dataloader, validation_dataset = pr.generate_squad_dataloaders(
         tokenizer, 100
     )
+    if quantize is True:
+        pr.evaluate_model(model, validation_dataset, eval_dataloader, quantize=True)
     return pr.evaluate_model(model, validation_dataset, eval_dataloader)
 
 
